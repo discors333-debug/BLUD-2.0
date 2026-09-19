@@ -1,2 +1,6 @@
 # BLUD-2.0
-run the installer then type blud in your terminal
+install installer.sh
+run the installer
+run exec (your shell)
+type blud in your terminal
+
