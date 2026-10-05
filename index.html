@@ -117,6 +117,21 @@ kbd {
 .stats-grid div { background: #fbefd2; border-radius: 10px; padding: 8px 4px; display: flex; flex-direction: column; font-size: 12px; }
 .stats-grid strong { font-size: 18px; color: var(--title); }
 
+/* ---------- button icons (drawn shapes, so iOS can't swap in emoji) ---------- */
+.ico { display: block; background: currentColor; pointer-events: none; flex: none; }
+.ico-left { width: 0.8em; height: 1em; clip-path: polygon(100% 0, 0 50%, 100% 100%); transform: translateX(-0.1em); }
+.ico-right { width: 0.8em; height: 1em; clip-path: polygon(0 0, 100% 50%, 0 100%); transform: translateX(0.1em); }
+.ico-down { width: 1em; height: 0.8em; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.ico-dot { width: 0.75em; height: 0.75em; border-radius: 50%; }
+.ico-pause { width: 0.8em; height: 0.9em; background: linear-gradient(90deg, currentColor 35%, transparent 35% 65%, currentColor 65%); }
+.tbtn {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  min-width: 26px; height: 26px; padding: 0 6px; box-sizing: border-box; border-radius: 13px;
+  background: var(--sand-dark); color: #fff; font-size: 12px; font-weight: bold;
+}
+.tbtn.act { background: var(--accent); }
+body.touch-mode .keys-only, body:not(.touch-mode) .touch-only { display: none !important; }
+
 /* ---------- touch controls ---------- */
 .touch {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
@@ -125,6 +140,7 @@ kbd {
 }
 .touch .pad { display: flex; gap: 12px; pointer-events: auto; align-items: flex-end; }
 .touch button {
+  display: flex; align-items: center; justify-content: center;
   width: 66px; height: 66px; border-radius: 50%; font-size: 24px; padding: 0;
   background: rgba(255, 245, 220, 0.35); color: #fff; border: 2px solid rgba(255,255,255,0.6); box-shadow: none;
   touch-action: none;
@@ -134,7 +150,8 @@ kbd {
 .touch button.on { background: rgba(255, 255, 255, 0.6); }
 .pause-btn {
   position: fixed; z-index: 3; top: 104px; right: 8px;
-  padding: 6px 14px; font-size: 14px; background: rgba(0,0,0,0.35); color: #fff; box-shadow: none;
+  display: flex; align-items: center; justify-content: center;
+  padding: 8px 14px; font-size: 18px; background: rgba(0,0,0,0.35); color: #fff; box-shadow: none;
 }
 .pause-btn:active { transform: translateY(1px); }
 
@@ -165,16 +182,16 @@ kbd {
 <!-- On-screen controls (touch devices only) -->
 <div id="touch" class="touch hidden">
   <div class="pad">
-    <button data-key="arrowleft" aria-label="Walk left">◀&#xFE0E;</button>
-    <button data-key="arrowright" aria-label="Walk right">▶&#xFE0E;</button>
+    <button data-key="arrowleft" aria-label="Walk left"><span class="ico ico-left"></span></button>
+    <button data-key="arrowright" aria-label="Walk right"><span class="ico ico-right"></span></button>
   </div>
   <div class="pad">
     <button data-key="shift" class="small" aria-label="Sprint">Sprint</button>
-    <button data-key="s" aria-label="Burrow">▼&#xFE0E;</button>
-    <button data-key=" " class="act" aria-label="Action">●</button>
+    <button data-key="s" aria-label="Burrow"><span class="ico ico-down"></span></button>
+    <button data-key=" " class="act" aria-label="Action"><span class="ico ico-dot"></span></button>
   </div>
 </div>
-<button id="pauseBtn" class="pause-btn hidden" aria-label="Pause">❚❚</button>
+<button id="pauseBtn" class="pause-btn hidden" aria-label="Pause"><span class="ico ico-pause"></span></button>
 
 <!-- ============ LOBBY ============ -->
 <div id="lobby" class="screen lobby">
@@ -217,11 +234,11 @@ kbd {
         <li><b>Dawn:</b> dew forms on some rocks. Drink it before it dries up mid-morning.</li>
         <li><b>Midday:</b> it reaches about 45°C. Hide in a <b>burrow</b> (25°C) or under an <b>acacia tree</b> (12°C cooler).</li>
         <li><b>Afternoon and dusk:</b> forage for beetles, seeds and cactus fruit. Watch the sky for <b>hawks</b>.</li>
-        <li><b>Night:</b> it drops to about 3°C. Get back into a burrow and hold Space to sleep through it.</li>
+        <li><b>Night:</b> it drops to about 3°C. Get back into a burrow and <span data-label="holdl">hold Space</span> to sleep through it.</li>
       </ul>
       <h3>Also out there</h3>
       <ul>
-        <li><b>Oasis</b> in the middle of the map: hold Space to drink. It refills every dawn.</li>
+        <li><b>Oasis</b> in the middle of the map: <span data-label="holdl">hold Space</span> to drink. It refills every dawn.</li>
         <li><b>Golden scarabs</b> are rare and fast, and restore health as well as fat.</li>
         <li><b>Hawks</b> circle, then dive at a red ring. Run out of it or duck into a burrow.</li>
         <li><b>Sandstorms</b> slow you down but can't hurt you.</li>
@@ -231,7 +248,7 @@ kbd {
     </section>
 
     <section id="tab-controls" class="tab-panel hidden">
-      <table class="controls">
+      <table class="controls keys-only">
         <tr><td><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd></td><td>Walk</td></tr>
         <tr><td><kbd>Shift</kbd> (hold)</td><td>Sprint: faster, but costs more water, fat and heat</td></tr>
         <tr><td><kbd>↓</kbd> or <kbd>S</kbd></td><td>Enter a burrow when standing on one, or leave it</td></tr>
@@ -242,7 +259,17 @@ kbd {
         <tr><td><kbd>P</kbd> or <kbd>Esc</kbd></td><td>Pause</td></tr>
         <tr><td><kbd>M</kbd></td><td>Sound on/off</td></tr>
       </table>
-      <p class="note">On a phone or tablet, on-screen buttons appear during play.</p>
+      <table class="controls touch-only">
+        <tr><td><span class="tbtn"><span class="ico ico-left"></span></span> <span class="tbtn"><span class="ico ico-right"></span></span></td><td>Walk</td></tr>
+        <tr><td><span class="tbtn">Sprint</span> (hold)</td><td>Sprint: faster, but costs more water, fat and heat</td></tr>
+        <tr><td><span class="tbtn"><span class="ico ico-down"></span></span></td><td>Enter a burrow when standing on one, or leave it</td></tr>
+        <tr><td><span class="tbtn act"><span class="ico ico-dot"></span></span> (tap)</td><td>Drink dew, eat food and cactus fruit</td></tr>
+        <tr><td><span class="tbtn act"><span class="ico ico-dot"></span></span> (hold)</td><td>Drink at the oasis, or sleep in a burrow (time ×4)</td></tr>
+        <tr><td>Tap a card</td><td>Choose an evolution at dawn</td></tr>
+        <tr><td><span class="tbtn"><span class="ico ico-pause"></span></span></td><td>Pause</td></tr>
+      </table>
+      <p class="note keys-only">On a phone or tablet, on-screen buttons appear during play.</p>
+      <p class="note touch-only">Using a keyboard? Press any key and the keyboard controls appear here.</p>
     </section>
 
     <section id="tab-adapt" class="tab-panel hidden">
@@ -266,7 +293,7 @@ kbd {
     <h2>Dawn of Day <span id="traitDay">2</span></h2>
     <p>You survived the night. Your sandstrider evolves. Choose one:</p>
     <div id="traitCards" class="trait-cards"></div>
-    <p class="note">Click a card or press 1, 2 or 3</p>
+    <p class="note" data-label="pick">Click a card or press 1, 2 or 3</p>
   </div>
 </div>
 
@@ -1053,6 +1080,31 @@ window.SS = window.SS || {};
   // ---------- view / resize ----------
   const view = { w: SS.BASE_W, h: SS.BASE_H, scale: 1, dpr: 1, offY: 0 };
   const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  // Which controls to show and name in hints/tips. Starts from the device type,
+  // then follows whatever the player actually uses (keyboard or touch).
+  let inputMode = isTouch ? "touch" : "keys";
+  const LABELS = {
+    keys: {
+      act: "Space", hold: "Hold Space", holdl: "hold Space", down: "↓ / S",
+      sprint: "hold Shift", pick: "Click a card or press 1, 2 or 3"
+    },
+    touch: {
+      act: "Tap ●", hold: "Hold ●", holdl: "hold the ● button", down: "Tap ▼",
+      sprint: "hold the Sprint button", pick: "Tap a card to choose"
+    }
+  };
+  const say = msg => msg.replace(/\{(\w+)\}/g, (m, k) => LABELS[inputMode][k] || m);
+  function applyLabels() {
+    document.body.classList.toggle("touch-mode", inputMode === "touch");
+    document.querySelectorAll("[data-label]").forEach(el => { el.textContent = LABELS[inputMode][el.dataset.label]; });
+  }
+  function setInputMode(mode) {
+    if (mode === inputMode) return;
+    inputMode = mode;
+    applyLabels();
+    resize();
+    if (typeof syncTouch === "function" && g) syncTouch();
+  }
   // On touchscreens, keep a strip at the bottom free for the on-screen buttons
   // and fit the scene down to just below the animal's feet.
   const TOUCH_PAD = 92, TOUCH_SCENE_H = 515;
@@ -1061,12 +1113,12 @@ window.SS = window.SS || {};
     const W = window.innerWidth, H = window.innerHeight;
     canvas.width = Math.round(W * view.dpr);
     canvas.height = Math.round(H * view.dpr);
-    view.scale = isTouch
+    view.scale = inputMode === "touch"
       ? Math.min((H - TOUCH_PAD) / TOUCH_SCENE_H, W / SS.BASE_W)
       : Math.min(H / SS.BASE_H, W / SS.BASE_W);
     view.w = W / view.scale; view.h = H / view.scale;
     // tall portrait screens: slide the scene down so the ground sits just above the buttons
-    view.offY = isTouch ? Math.max(0, (H - TOUCH_PAD) / view.scale - TOUCH_SCENE_H) : 0;
+    view.offY = inputMode === "touch" ? Math.max(0, (H - TOUCH_PAD) / view.scale - TOUCH_SCENE_H) : 0;
     // tuck the pause button under the Day panel (top-right of the HUD)
     const pb = document.getElementById("pauseBtn");
     if (pb) { pb.style.top = Math.round(104 * view.scale) + "px"; pb.style.right = Math.round(8 * view.scale) + "px"; }
@@ -1093,11 +1145,13 @@ window.SS = window.SS || {};
   const GAME_KEYS = ["arrowleft", "arrowright", "arrowdown", "arrowup", " "];
   window.addEventListener("keydown", e => {
     const k = e.key.toLowerCase();
+    setInputMode("keys");
     if (GAME_KEYS.includes(k) && g.mode === "play") e.preventDefault();
     if (!keys[k]) pressed[k] = true;
     keys[k] = true;
     onKeyCommand(k, e);
   });
+  window.addEventListener("pointerdown", e => { if (e.pointerType === "touch") setInputMode("touch"); }, true);
   window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
   window.addEventListener("blur", () => {
     for (const k in keys) keys[k] = false;
@@ -1170,7 +1224,7 @@ window.SS = window.SS || {};
   function tip(id, title, msg) {
     if (!settings.tips || g.tip.seen[id]) return;
     g.tip.seen[id] = true;
-    g.tip.queue.push({ title, text: isTouch ? msg.replace(/Space/g, "●") : msg });
+    g.tip.queue.push({ title, text: say(msg) });
   }
   function floater(x, y, str, color) { g.floaters.push({ x, y, text: str, color: color || "#fff", life: 1.4 }); }
   function burst(x, y, color, n, spread) {
@@ -1275,7 +1329,7 @@ window.SS = window.SS || {};
       else if (nearBurrow !== undefined) {
         p.inBurrow = true; p.x = nearBurrow; p.vx = 0;
         SS.audio.sfx.burrow();
-        tip("burrow", "SHELTER", "Burrows stay a mild 25°C. Hold Space inside to sleep and speed up time.");
+        tip("burrow", "SHELTER", "Burrows stay a mild 25°C. {hold} inside to sleep and speed up time.");
       }
     }
     if (consume("arrowup", "w") && p.inBurrow) exitBurrow();
@@ -1307,7 +1361,7 @@ window.SS = window.SS || {};
         const amt = Math.min(18 * dt, o.level, 100 - s.water);
         s.water += amt; o.level -= amt;
         if (Math.random() < dt * 8) burst(o.x + rand(-30, 30), groundY(o.x), "#7cc8ff", 1, 30);
-        tip("oasis", "OASIS", "Hold Space to drink. The oasis shrinks as you drink and refills each dawn.");
+        tip("oasis", "OASIS", "{hold} to drink. The oasis shrinks as you drink and refills each dawn.");
       }
     }
 
@@ -1502,15 +1556,14 @@ window.SS = window.SS || {};
 
   function updateHint() {
     const p = g.player, w = g.world;
-    const act = isTouch ? "●" : "Space", down = isTouch ? "▼" : "↓ / S";
     let hint = "";
-    if (p.inBurrow) hint = `Hold ${act} to sleep · ${down} to leave`;
-    else if (w.burrows.some(b => Math.abs(b - p.x) < 45)) hint = `${down} to enter burrow`;
-    else if (w.rocks.some(r => r.dew && Math.abs(r.x - p.x) < 60)) hint = `${act}: drink dew`;
-    else if (w.cacti.some(c => c.fruit && Math.abs(c.x - p.x) < 45)) hint = `${act}: eat cactus fruit`;
-    else if (w.food.some(f => Math.abs(f.x - p.x) < 50)) hint = `${act}: eat`;
-    else if (Math.abs(w.oasis.x - p.x) < 80 && w.oasis.level > 0) hint = `Hold ${act}: drink`;
-    g.hint = hint;
+    if (p.inBurrow) hint = "{hold} to sleep · {down} to leave";
+    else if (w.burrows.some(b => Math.abs(b - p.x) < 45)) hint = "{down} to enter burrow";
+    else if (w.rocks.some(r => r.dew && Math.abs(r.x - p.x) < 60)) hint = "{act} to drink dew";
+    else if (w.cacti.some(c => c.fruit && Math.abs(c.x - p.x) < 45)) hint = "{act} to eat cactus fruit";
+    else if (w.food.some(f => Math.abs(f.x - p.x) < 50)) hint = "{act} to eat";
+    else if (Math.abs(w.oasis.x - p.x) < 80 && w.oasis.level > 0) hint = "{hold} to drink";
+    g.hint = say(hint);
   }
 
   function updateCamera(dt) {
@@ -1537,7 +1590,7 @@ window.SS = window.SS || {};
   function hideScreens() { SCREENS.forEach(s => $(s).classList.add("hidden")); syncTouch(); }
   function syncTouch() {
     const playing = g && g.mode === "play";
-    touch.classList.toggle("hidden", !(isTouch && playing));
+    touch.classList.toggle("hidden", !(inputMode === "touch" && playing));
     $("pauseBtn").classList.toggle("hidden", !playing);
   }
 
@@ -1607,7 +1660,7 @@ window.SS = window.SS || {};
       case "Froze": return "Tip: get into a burrow before dusk ends. Radiator ears cool you fast at night.";
       case "Dehydrated": return "Tip: be next to a rock at dawn for dew, and remember the oasis in the middle of the map.";
       case "Starved": return "Tip: eat beetles, seeds and cactus fruit whenever you pass them. A big hump makes water too.";
-      case "Caught by a hawk": return "Tip: when the red ring appears, sprint (Shift) out of it or duck into a burrow.";
+      case "Caught by a hawk": return say("Tip: when the red ring appears, {sprint} to run out of it, or duck into a burrow.");
       default: return "";
     }
   }
@@ -1689,6 +1742,7 @@ window.SS = window.SS || {};
   SS.debug = { get state() { return g; } };
 
   buildLobby();
+  applyLabels();
   toLobby();
   requestAnimationFrame(frame);
 })(window.SS);
