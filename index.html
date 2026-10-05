@@ -2,625 +2,155 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Sandstrider: Desert Survival</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1208; font-family: "Trebuchet MS", Verdana, sans-serif; }
-  canvas { display: block; width: 100vw; height: 100vh; }
-  .screen {
-    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: rgba(30, 18, 6, 0.72); z-index: 2; padding: 16px; box-sizing: border-box;
-  }
-  .screen.hidden { display: none; }
-  .card {
-    background: #f6e2b8; color: #4a2f12; border-radius: 14px; padding: 24px 28px; max-width: 460px; width: 100%;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5); text-align: center; border: 3px solid #c99a5a;
-  }
-  .card h1 { margin: 0 0 8px; font-size: clamp(22px, 5vw, 32px); color: #8a4f17; }
-  .card h2 { margin: 0 0 8px; font-size: 26px; color: #8a2f17; }
-  .card p { margin: 8px 0; line-height: 1.4; }
-  .card ul { text-align: left; margin: 12px auto; padding-left: 20px; max-width: 340px; line-height: 1.6; font-size: 15px; }
-  .card b { color: #6b3a0e; }
-  button {
-    margin-top: 12px; font: inherit; font-size: 18px; font-weight: bold; padding: 10px 28px; border-radius: 10px;
-    border: none; background: #d9783a; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #9b4f1e;
-  }
-  button:hover { background: #e88a48; }
-  button:active { transform: translateY(2px); box-shadow: 0 2px 0 #9b4f1e; }
-  .big { font-size: 22px; font-weight: bold; }
-</style>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<canvas id="game"></canvas>
+<canvas id="game" aria-label="Sandstrider game"></canvas>
 
-<div id="startScreen" class="screen">
-  <div class="card">
-    <h1>Sandstrider: Desert Survival</h1>
-    <p>Keep your body heat, water and fat in balance to survive as many desert days as you can.</p>
-    <ul>
-      <li><b>← → / A D</b> — walk</li>
-      <li><b>↓ / S</b> — enter or leave a burrow (stays 25°C inside)</li>
-      <li><b>Space</b> — drink dew or eat beetles &amp; seeds</li>
-    </ul>
-    <p style="font-size:14px">Tip: hide in a burrow at midday and at night.</p>
-    <button id="startBtn">Start</button>
+<!-- On-screen controls (touch devices only) -->
+<div id="touch" class="touch hidden">
+  <div class="pad">
+    <button data-key="arrowleft" aria-label="Walk left">◀</button>
+    <button data-key="arrowright" aria-label="Walk right">▶</button>
+  </div>
+  <div class="pad">
+    <button data-key="shift" class="small" aria-label="Sprint">Sprint</button>
+    <button data-key="s" aria-label="Burrow">▼</button>
+    <button data-key=" " class="act" aria-label="Action">●</button>
+  </div>
+</div>
+<button id="pauseBtn" class="pause-btn hidden" aria-label="Pause">❚❚</button>
+
+<!-- ============ LOBBY ============ -->
+<div id="lobby" class="screen lobby">
+  <div class="card lobby-card">
+    <header class="lobby-head">
+      <h1>Sandstrider</h1>
+      <p class="subtitle">Desert Survival</p>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="tab-play" role="tab" aria-selected="true">Play</button>
+      <button class="tab" data-tab="tab-how" role="tab" aria-selected="false">How to Play</button>
+      <button class="tab" data-tab="tab-controls" role="tab" aria-selected="false">Controls</button>
+      <button class="tab" data-tab="tab-adapt" role="tab" aria-selected="false">Adaptations</button>
+    </nav>
+
+    <section id="tab-play" class="tab-panel">
+      <p class="goal">Survive as many days as you can in the desert by keeping your body heat, water and fat in balance.</p>
+      <h3>Difficulty</h3>
+      <div id="diffCards" class="diff-cards"></div>
+      <div class="options">
+        <label><input type="checkbox" id="optSound"> Sound</label>
+        <label><input type="checkbox" id="optTips"> Adaptation tips</label>
+      </div>
+      <button id="startBtn" class="primary">Start</button>
+    </section>
+
+    <section id="tab-how" class="tab-panel hidden">
+      <h3>Goal</h3>
+      <p>Each day lasts 90 seconds. Your score is the number of days you survive.</p>
+      <h3>Your four bars</h3>
+      <ul>
+        <li><b>Body heat:</b> keep it between the two white marks (33–41°C). The midday sun heats you fast and the night freezes you.</li>
+        <li><b>Water:</b> drains over time, and faster when you walk or sprint in the heat.</li>
+        <li><b>Fat (hump):</b> drains slowly. When water is low, your hump turns fat into water.</li>
+        <li><b>Health:</b> drops while any bar is in the red. At zero, the game is over.</li>
+      </ul>
+      <h3>A day in the desert</h3>
+      <ul>
+        <li><b>Dawn:</b> dew forms on some rocks. Drink it before it dries up mid-morning.</li>
+        <li><b>Midday:</b> it reaches about 45°C. Hide in a <b>burrow</b> (25°C) or under an <b>acacia tree</b> (12°C cooler).</li>
+        <li><b>Afternoon and dusk:</b> forage for beetles, seeds and cactus fruit. Watch the sky for <b>hawks</b>.</li>
+        <li><b>Night:</b> it drops to about 3°C. Get back into a burrow and hold Space to sleep through it.</li>
+      </ul>
+      <h3>Also out there</h3>
+      <ul>
+        <li><b>Oasis</b> in the middle of the map: hold Space to drink. It refills every dawn.</li>
+        <li><b>Golden scarabs</b> are rare and fast, and restore health as well as fat.</li>
+        <li><b>Hawks</b> circle, then dive at a red ring. Run out of it or duck into a burrow.</li>
+        <li><b>Sandstorms</b> slow you down but can't hurt you.</li>
+        <li><b>Weather</b> changes daily: heatwaves, cold snaps and windy days.</li>
+        <li><b>Evolution:</b> every new dawn, pick one of three traits to make your sandstrider tougher.</li>
+      </ul>
+    </section>
+
+    <section id="tab-controls" class="tab-panel hidden">
+      <table class="controls">
+        <tr><td><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd></td><td>Walk</td></tr>
+        <tr><td><kbd>Shift</kbd> (hold)</td><td>Sprint: faster, but costs more water, fat and heat</td></tr>
+        <tr><td><kbd>↓</kbd> or <kbd>S</kbd></td><td>Enter a burrow when standing on one, or leave it</td></tr>
+        <tr><td><kbd>↑</kbd> or <kbd>W</kbd></td><td>Leave a burrow</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>Drink dew, eat food and cactus fruit</td></tr>
+        <tr><td><kbd>Space</kbd> (hold)</td><td>Drink at the oasis, or sleep in a burrow (time ×4)</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Choose an evolution at dawn</td></tr>
+        <tr><td><kbd>P</kbd> or <kbd>Esc</kbd></td><td>Pause</td></tr>
+        <tr><td><kbd>M</kbd></td><td>Sound on/off</td></tr>
+      </table>
+      <p class="note">On a phone or tablet, on-screen buttons appear during play.</p>
+    </section>
+
+    <section id="tab-adapt" class="tab-panel hidden">
+      <h3>Built-in adaptations</h3>
+      <ul>
+        <li><b>Radiator ears:</b> your tall ears shed body heat faster when the air cools. Great at dusk, risky at night.</li>
+        <li><b>Dew spikes:</b> the spikes on your hump channel dew to your mouth for a big water refill.</li>
+        <li><b>Fat hump:</b> stored fat turns into water when you're running dry.</li>
+        <li><b>Sealing nostrils:</b> they close in sandstorms so the sand can't hurt you.</li>
+        <li><b>Wide flat feet:</b> they keep you on top of the soft sand.</li>
+      </ul>
+      <h3>Evolutions (pick one each dawn)</h3>
+      <ul id="traitList"></ul>
+    </section>
   </div>
 </div>
 
+<!-- ============ EVOLUTION PICK ============ -->
+<div id="traitScreen" class="screen hidden">
+  <div class="card wide">
+    <h2>Dawn of Day <span id="traitDay">2</span></h2>
+    <p>You survived the night. Your sandstrider evolves. Choose one:</p>
+    <div id="traitCards" class="trait-cards"></div>
+    <p class="note">Click a card or press 1, 2 or 3</p>
+  </div>
+</div>
+
+<!-- ============ PAUSE ============ -->
+<div id="pauseScreen" class="screen hidden">
+  <div class="card">
+    <h2>Paused</h2>
+    <h3>Your evolutions</h3>
+    <ul id="pauseTraits" class="trait-summary"></ul>
+    <div class="btn-row">
+      <button id="resumeBtn" class="primary">Resume</button>
+      <button id="restartBtn">Restart</button>
+      <button id="quitBtn">Lobby</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ GAME OVER ============ -->
 <div id="overScreen" class="screen hidden">
   <div class="card">
     <h2>Game Over</h2>
     <p class="big" id="causeText">Overheated</p>
     <p id="daysText">You survived 0 days.</p>
-    <button id="againBtn">Play Again</button>
+    <p id="bestText" class="best-line"></p>
+    <div id="overStats" class="stats-grid"></div>
+    <p id="overTip" class="note"></p>
+    <div class="btn-row">
+      <button id="againBtn" class="primary">Play Again</button>
+      <button id="overLobbyBtn">Lobby</button>
+    </div>
   </div>
 </div>
 
-<script>
-(function () {
-  "use strict";
-
-  // ---------- Setup ----------
-  const canvas = document.getElementById("game");
-  const ctx = canvas.getContext("2d");
-  const startScreen = document.getElementById("startScreen");
-  const overScreen = document.getElementById("overScreen");
-
-  const WORLD_W = 3000;     // about 3 screens wide
-  const DAY_LEN = 90;       // seconds per full day
-  const BASE_H = 600, BASE_W = 700;
-  let W = 0, H = 0, scale = 1, viewW = BASE_W, viewH = BASE_H, dpr = 1;
-
-  function resize() {
-    dpr = window.devicePixelRatio || 1;
-    W = window.innerWidth; H = window.innerHeight;
-    canvas.width = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
-    scale = Math.min(H / BASE_H, W / BASE_W);
-    viewW = W / scale; viewH = H / scale;
-  }
-  window.addEventListener("resize", resize);
-  resize();
-
-  const groundY = x => 470 + 18 * Math.sin(x / 180) + 10 * Math.sin(x / 67 + 1);
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const rand = (a, b) => a + Math.random() * (b - a);
-
-  // ---------- Input ----------
-  const keys = {};
-  const pressed = {};
-  window.addEventListener("keydown", e => {
-    const k = e.key.toLowerCase();
-    if (["arrowleft", "arrowright", "arrowdown", "arrowup", " "].includes(k)) e.preventDefault();
-    if (!keys[k]) pressed[k] = true;
-    keys[k] = true;
-  });
-  window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
-  window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
-  const consume = (...ks) => { let hit = false; for (const k of ks) if (pressed[k]) { hit = true; pressed[k] = false; } return hit; };
-
-  // ---------- World data ----------
-  const burrows = [420, 1500, 2600];
-  const rocks = [250, 700, 1050, 1300, 1800, 2150, 2400, 2850].map(x => ({ x, w: rand(34, 50), h: rand(20, 30), dew: false }));
-  const stars = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random() * 0.6, r: rand(0.6, 1.6) }));
-  let food = [], streaks = [];
-
-  let state, player, time, day, health, heat, water, fat, storm, tips, tipQueue, tipTimer, running = false, causeOfDeath = "";
-
-  function spawnFood(n) {
-    for (let i = 0; i < n; i++) {
-      let x;
-      do { x = rand(60, WORLD_W - 60); } while (burrows.some(b => Math.abs(b - x) < 70));
-      const beetle = Math.random() < 0.45;
-      food.push({ x, type: beetle ? "beetle" : "seed", dir: Math.random() < 0.5 ? -1 : 1, phase: Math.random() * 6 });
-    }
-  }
-
-  function reset() {
-    player = { x: 600, facing: 1, walk: 0, moving: false, inBurrow: false };
-    time = 0.2;           // start at dawn (0 = midnight)
-    day = 1;
-    health = 100; heat = 37; water = 80; fat = 70;
-    storm = { start: rand(0.35, 0.75), active: false, timer: 0, doneToday: false };
-    tips = {}; tipQueue = []; tipTimer = 0;
-    food = []; spawnFood(18);
-    rocks.forEach(r => r.dew = false);
-    placeDew();
-    streaks = [];
-    causeOfDeath = "";
-  }
-
-  function placeDew() {
-    let n = 0;
-    rocks.forEach(r => { r.dew = Math.random() < 0.55; if (r.dew) n++; });
-    if (n < 2) { rocks[Math.floor(Math.random() * rocks.length)].dew = true; }
-  }
-
-  function tip(id, text) {
-    if (tips[id]) return;
-    tips[id] = true;
-    tipQueue.push(text);
-  }
-
-  // ---------- Time / environment ----------
-  function phaseName(t) {
-    if (t < 0.2 || t >= 0.8) return "Night";
-    if (t < 0.3) return "Dawn";
-    if (t < 0.7) return "Day";
-    return "Dusk";
-  }
-  function sunHeight(t) { return t >= 0.2 && t <= 0.8 ? Math.sin(Math.PI * (t - 0.2) / 0.6) : 0; }
-  function airTemp(t) {
-    // peaks ~45°C a bit after noon, ~3°C through the night
-    const s = (t >= 0.2 && t <= 0.85) ? Math.max(0, Math.sin(Math.PI * (t - 0.2) / 0.65)) : 0;
-    return 3 + 42 * Math.pow(s, 1.3);
-  }
-
-  const skyKeys = [
-    [0.00, [12, 16, 40], [30, 30, 60]],
-    [0.18, [20, 24, 60], [60, 50, 90]],
-    [0.24, [90, 90, 150], [250, 150, 110]],
-    [0.32, [110, 170, 230], [240, 220, 180]],
-    [0.50, [70, 150, 235], [250, 230, 190]],
-    [0.68, [110, 160, 220], [245, 210, 160]],
-    [0.76, [120, 70, 120], [250, 130, 80]],
-    [0.84, [25, 25, 65], [70, 50, 90]],
-    [1.00, [12, 16, 40], [30, 30, 60]],
-  ];
-  function skyColors(t) {
-    for (let i = 0; i < skyKeys.length - 1; i++) {
-      const a = skyKeys[i], b = skyKeys[i + 1];
-      if (t >= a[0] && t <= b[0]) {
-        const f = (t - a[0]) / (b[0] - a[0]);
-        const mix = (c1, c2) => `rgb(${c1.map((v, j) => Math.round(lerp(v, c2[j], f))).join(",")})`;
-        return [mix(a[1], b[1]), mix(a[2], b[2])];
-      }
-    }
-    return ["#000", "#000"];
-  }
-  // 0 = full night darkness, 1 = full daylight
-  function lightLevel(t) {
-    if (t < 0.18 || t > 0.84) return 0;
-    if (t < 0.3) return (t - 0.18) / 0.12;
-    if (t > 0.72) return 1 - (t - 0.72) / 0.12;
-    return 1;
-  }
-
-  // ---------- Update ----------
-  function update(dt) {
-    const prevT = time;
-    time += dt / DAY_LEN;
-    if (time >= 1) {
-      time -= 1; day++;
-      storm.doneToday = false; storm.start = rand(0.35, 0.75);
-      if (food.length < 18) spawnFood(18 - food.length);
-    }
-    // dawn: fresh dew on rocks
-    if (prevT < 0.2 && time >= 0.2) placeDew();
-    // dew evaporates mid-morning
-    if (time > 0.36 && time < 0.4) rocks.forEach(r => r.dew = false);
-
-    // sandstorm, about once per day
-    if (!storm.doneToday && !storm.active && time >= storm.start && time < storm.start + 0.05) {
-      storm.active = true; storm.timer = 14; storm.doneToday = true;
-    }
-    if (storm.active) {
-      storm.timer -= dt;
-      if (storm.timer <= 0) storm.active = false;
-      if (!player.inBurrow) tip("storm", "Sandstorm! Your nostrils seal shut, so the sand can't hurt you, but walking is slower.");
-    }
-
-    // movement
-    const left = keys["arrowleft"] || keys["a"], right = keys["arrowright"] || keys["d"];
-    player.moving = false;
-    if (consume("arrowdown", "s")) {
-      if (player.inBurrow) player.inBurrow = false;
-      else if (burrows.some(b => Math.abs(b - player.x) < 45)) {
-        player.inBurrow = true;
-        player.x = burrows.find(b => Math.abs(b - player.x) < 45);
-        tip("burrow", "Burrows stay a mild 25°C. Rest here through the midday heat and freezing nights.");
-      }
-    }
-    if (!player.inBurrow) {
-      const speed = 170 * (storm.active ? 0.45 : 1);
-      if (left !== right) {
-        player.facing = left ? -1 : 1;
-        player.x = clamp(player.x + player.facing * speed * dt, 40, WORLD_W - 40);
-        player.moving = true;
-        player.walk += dt * (storm.active ? 6 : 11);
-      }
-    }
-
-    // eating and dew
-    if (consume(" ")) {
-      if (!player.inBurrow) {
-        const rock = rocks.find(r => r.dew && Math.abs(r.x - player.x) < 60);
-        if (rock) {
-          rock.dew = false; water = Math.min(100, water + 40);
-          tip("dew", "Your spikes channel dew down to your mouth! Big water refill.");
-        } else {
-          const i = food.findIndex(f => Math.abs(f.x - player.x) < 50);
-          if (i >= 0) {
-            const f = food[i]; food.splice(i, 1);
-            if (f.type === "beetle") { fat = Math.min(100, fat + 16); water = Math.min(100, water + 4); }
-            else fat = Math.min(100, fat + 10);
-            tip("food", "Food is stored as fat in your hump. Watch it grow!");
-          }
-        }
-      }
-    }
-
-    // beetles crawl
-    for (const f of food) {
-      if (f.type !== "beetle") continue;
-      f.phase += dt;
-      f.x += f.dir * 12 * dt;
-      if (Math.random() < dt * 0.3 || f.x < 40 || f.x > WORLD_W - 40) f.dir *= -1;
-    }
-
-    // body heat
-    const air = player.inBurrow ? 25 : airTemp(time);
-    const target = 37 + (air - 25) * 0.6; // metabolism buffers you from the air
-    let k = 0.03;
-    if (heat > target && !player.inBurrow && lightLevel(time) < 0.6) {
-      k *= 1.35; // radiator ears
-      if (heat > 37.5) tip("ears", "Radiator ears! Blood vessels in your tall ears dump heat fast as the air cools.");
-    }
-    heat += (target - heat) * k * dt;
-    if (player.moving && air > 28) heat += 0.45 * dt;
-    if (player.inBurrow && heat > 37) heat -= 0.3 * dt; // shade + rest cools
-    heat = clamp(heat, 28, 46);
-
-    // water and fat
-    water -= (0.55 + (player.moving && air > 28 ? 1.1 : 0)) * dt;
-    fat -= 0.22 * dt;
-    if (water < 30 && fat > 1) {
-      const c = 1.6 * dt;
-      fat -= c; water += c * 0.8;
-      tip("fat", "Your hump is turning fat into water to keep you going!");
-    }
-    water = clamp(water, 0, 100); fat = clamp(fat, 0, 100);
-
-    // health
-    let dmg = 0, cause = "";
-    const hurt = (amt, why) => { dmg += amt; if (amt > 0 && (!cause || amt >= 6)) cause = why; };
-    if (heat > 41) hurt(7 + (heat - 41) * 3, "Overheated");
-    if (heat < 33) hurt(7 + (33 - heat) * 3, "Froze");
-    if (water < 12) hurt(6, "Dehydrated");
-    if (fat < 5) hurt(5, "Starved");
-    if (dmg > 0) { health -= dmg * dt; causeOfDeath = cause; }
-    else health = Math.min(100, health + 3 * dt);
-
-    // tips popup timing
-    if (tipTimer > 0) { tipTimer -= dt; if (tipTimer <= 0) tipQueue.shift(); }
-    else if (tipQueue.length) tipTimer = 4.5;
-
-    if (health <= 0) { health = 0; gameOver(); }
-  }
-
-  // ---------- Drawing ----------
-  function ellipse(x, y, rx, ry, color, rot = 0) {
-    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
-    ctx.fillStyle = color; ctx.fill();
-  }
-
-  function drawStrider(x, y, facing, walk, moving, sealed) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(facing * 0.85, 0.85);
-    const sw = moving ? Math.sin(walk) * 10 : 0;
-    // legs
-    ctx.strokeStyle = "#C99A5A"; ctx.lineWidth = 4; ctx.lineCap = "round";
-    const legs = [[-16, -sw], [16, sw]];
-    for (const [lx, off] of legs) {
-      const fy = -4 - (moving ? Math.max(0, Math.sin(walk + (off > 0 ? 0 : Math.PI))) * 5 : 0);
-      ctx.beginPath(); ctx.moveTo(lx, -54); ctx.lineTo(lx + off, fy); ctx.stroke();
-      ellipse(lx + off + 2, fy + 1, 11, 4, "#B88A50");
-    }
-    // body
-    ellipse(0, -64, 33, 20, "#E3B877");
-    // hump (size reflects fat)
-    const hx = -4, hy = -82, hrx = 11 + 9 * (fat / 100), hry = 7 + 6 * (fat / 100);
-    ctx.fillStyle = "#B8864A";
-    for (let i = 0; i < 5; i++) {
-      const a = Math.PI * (1.15 + 0.7 * i / 4);
-      const bx = hx + hrx * Math.cos(a), by = hy + hry * Math.sin(a);
-      const nx = Math.cos(a), ny = Math.sin(a), px = -ny, py = nx;
-      ctx.beginPath();
-      ctx.moveTo(bx + px * 3.5, by + py * 3.5);
-      ctx.lineTo(bx - px * 3.5, by - py * 3.5);
-      ctx.lineTo(bx + nx * 10, by + ny * 10);
-      ctx.closePath(); ctx.fill();
-    }
-    ellipse(hx, hy, hrx, hry, "#D9A866");
-    // neck
-    ctx.strokeStyle = "#E3B877"; ctx.lineWidth = 13;
-    ctx.beginPath(); ctx.moveTo(22, -70); ctx.lineTo(36, -98); ctx.stroke();
-    // ears
-    ellipse(32, -126, 4.5, 17, "#E3B877", -0.18);
-    ellipse(32, -125, 2.2, 12, "#F4A7B9", -0.18);
-    ellipse(43, -128, 4.5, 17, "#E3B877", 0.12);
-    ellipse(43, -127, 2.2, 12, "#F4A7B9", 0.12);
-    // head
-    ellipse(40, -104, 13, 13, "#E3B877");
-    ellipse(51, -100, 6, 5, "#E3B877");
-    // eye + lashes
-    ellipse(44, -107, 5.5, 5.5, "#fff");
-    ellipse(46, -107, 3, 3, "#2b1a0a");
-    ctx.strokeStyle = "#2b1a0a"; ctx.lineWidth = 1.4;
-    for (let i = 0; i < 3; i++) {
-      const a = -Math.PI * (0.3 + 0.2 * i);
-      ctx.beginPath();
-      ctx.moveTo(44 + Math.cos(a) * 5.5, -107 + Math.sin(a) * 5.5);
-      ctx.lineTo(44 + Math.cos(a) * 9, -107 + Math.sin(a) * 9);
-      ctx.stroke();
-    }
-    // nostril (seals shut in sandstorms)
-    ctx.fillStyle = "#6b3a0e"; ctx.strokeStyle = "#6b3a0e";
-    if (sealed) { ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(53, -102); ctx.lineTo(57, -101); ctx.stroke(); }
-    else ellipse(55, -101, 1.6, 1.6, "#6b3a0e");
-    ctx.restore();
-  }
-
-  function drawBeetle(f) {
-    const y = groundY(f.x);
-    ctx.save(); ctx.translate(f.x, y); ctx.scale(f.dir, 1);
-    ctx.strokeStyle = "#1e1a12"; ctx.lineWidth = 1.2;
-    for (let i = -1; i <= 1; i++) {
-      const w = Math.sin(f.phase * 14 + i) * 2;
-      ctx.beginPath(); ctx.moveTo(i * 4, -4); ctx.lineTo(i * 4 + w - 2, 0); ctx.stroke();
-    }
-    ellipse(0, -6, 7, 4.5, "#2e3b2a");
-    ellipse(7, -6, 2.8, 2.6, "#1e1a12");
-    ctx.restore();
-  }
-  function drawSeeds(f) {
-    const y = groundY(f.x);
-    ellipse(f.x - 5, y - 2, 3.5, 2, "#7a5428", 0.4);
-    ellipse(f.x + 3, y - 2, 3.5, 2, "#8a6030", -0.3);
-    ellipse(f.x, y - 4.5, 3.5, 2, "#6a4420", 0.1);
-  }
-
-  function draw() {
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
-    const t = time;
-    const camX = WORLD_W > viewW ? clamp(player.x - viewW / 2, 0, WORLD_W - viewW) : (WORLD_W - viewW) / 2;
-    const light = lightLevel(t);
-
-    // sky
-    const [top, bottom] = skyColors(t);
-    const g = ctx.createLinearGradient(0, 0, 0, 480);
-    g.addColorStop(0, top); g.addColorStop(1, bottom);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, viewW, viewH);
-
-    // stars
-    if (light < 1) {
-      ctx.fillStyle = `rgba(255,255,240,${(1 - light) * 0.9})`;
-      for (const s of stars) { ctx.beginPath(); ctx.arc(s.x * viewW, s.y * 450, s.r, 0, Math.PI * 2); ctx.fill(); }
-    }
-    // sun
-    if (t > 0.18 && t < 0.82) {
-      const p = (t - 0.2) / 0.6;
-      const sx = lerp(-30, viewW + 30, p), sy = 440 - 370 * Math.sin(Math.PI * clamp(p, 0, 1));
-      ellipse(sx, sy, 34, 34, "rgba(255,230,120,0.25)");
-      ellipse(sx, sy, 22, 22, "#FFE27A");
-    }
-    // moon
-    const mt = t >= 0.8 ? t - 0.8 : t + 0.2;
-    if (mt < 0.42) {
-      const p = mt / 0.4;
-      const mx = lerp(-30, viewW + 30, p), my = 440 - 360 * Math.sin(Math.PI * clamp(p, 0, 1));
-      ellipse(mx, my, 16, 16, "#EEF0E0");
-      ellipse(mx + 7, my - 4, 13, 13, top);
-    }
-
-    // distant dunes (parallax)
-    ctx.fillStyle = shade("#C9A06A", light);
-    ctx.beginPath(); ctx.moveTo(0, viewH);
-    for (let sx = 0; sx <= viewW + 20; sx += 20) {
-      const wx = sx + camX * 0.4;
-      ctx.lineTo(sx, 420 + 30 * Math.sin(wx / 230) + 15 * Math.sin(wx / 90));
-    }
-    ctx.lineTo(viewW, viewH); ctx.fill();
-
-    // ---- world space ----
-    ctx.save();
-    ctx.translate(-camX, 0);
-
-    // ground
-    ctx.fillStyle = shade("#E8C88A", light);
-    ctx.beginPath(); ctx.moveTo(camX - 10, viewH + 10);
-    for (let x = Math.floor(camX / 10) * 10 - 10; x <= camX + viewW + 20; x += 10) ctx.lineTo(x, groundY(x));
-    ctx.lineTo(camX + viewW + 20, viewH + 10); ctx.fill();
-    ctx.strokeStyle = shade("#D4AE6E", light); ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let x = Math.floor(camX / 10) * 10 - 10; x <= camX + viewW + 20; x += 10) ctx.lineTo(x, groundY(x) + 30 + 4 * Math.sin(x / 40));
-    ctx.stroke();
-
-    // burrows
-    for (const b of burrows) {
-      const y = groundY(b);
-      ellipse(b, y + 4, 44, 16, shade("#C9A06A", light));
-      ellipse(b, y + 6, 34, 12, "#2a1a0c");
-      ellipse(b, y + 8, 26, 8, "#140c05");
-    }
-    // rocks + dew
-    for (const r of rocks) {
-      const y = groundY(r.x);
-      ellipse(r.x, y - r.h * 0.4, r.w, r.h, shade("#8E8577", light));
-      ellipse(r.x - r.w * 0.25, y - r.h * 0.7, r.w * 0.45, r.h * 0.35, shade("#A39A8B", light));
-      if (r.dew) {
-        const tw = 0.6 + 0.4 * Math.sin(performance.now() / 200 + r.x);
-        for (let i = -1; i <= 1; i++) {
-          ellipse(r.x + i * 11, y - r.h * 1.15 + Math.abs(i) * 3, 4, 5, "rgba(120,200,255,0.9)");
-          ellipse(r.x + i * 11 - 1, y - r.h * 1.15 + Math.abs(i) * 3 - 2, 1.4, 1.4, `rgba(255,255,255,${tw})`);
-        }
-      }
-    }
-    // food
-    for (const f of food) {
-      if (f.x < camX - 30 || f.x > camX + viewW + 30) continue;
-      f.type === "beetle" ? drawBeetle(f) : drawSeeds(f);
-    }
-
-    // player
-    const py = groundY(player.x);
-    if (player.inBurrow) {
-      // peek out of the burrow: just ears and eyes
-      ctx.save(); ctx.translate(player.x, py + 6);
-      ellipse(-8, -14, 3.5, 13, "#C9A06A", -0.15); ellipse(-8, -13, 1.6, 9, "#F4A7B9", -0.15);
-      ellipse(8, -14, 3.5, 13, "#C9A06A", 0.15); ellipse(8, -13, 1.6, 9, "#F4A7B9", 0.15);
-      ellipse(-5, 0, 3, 3, "#fff"); ellipse(5, 0, 3, 3, "#fff");
-      ellipse(-5, 0, 1.5, 1.5, "#000"); ellipse(5, 0, 1.5, 1.5, "#000");
-      ctx.restore();
-    } else {
-      drawStrider(player.x, py, player.facing, player.walk, player.moving, storm.active);
-    }
-
-    // context hints
-    let hint = "";
-    if (player.inBurrow) hint = "↓ / S to leave burrow";
-    else if (burrows.some(b => Math.abs(b - player.x) < 45)) hint = "↓ / S to enter burrow";
-    else if (rocks.some(r => r.dew && Math.abs(r.x - player.x) < 60)) hint = "Space: drink dew";
-    else if (food.some(f => Math.abs(f.x - player.x) < 50)) hint = "Space: eat";
-    if (hint) {
-      ctx.font = "bold 15px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
-      const tw = ctx.measureText(hint).width + 16;
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      roundRect(player.x - tw / 2, py - 168, tw, 24, 8); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.fillText(hint, player.x, py - 151);
-    }
-    ctx.restore();
-
-    // night tint
-    if (light < 1) { ctx.fillStyle = `rgba(10,12,40,${(1 - light) * 0.35})`; ctx.fillRect(0, 0, viewW, viewH); }
-
-    // sandstorm overlay
-    if (storm.active) {
-      const fade = Math.min(1, storm.timer / 2, (14 - storm.timer) / 2);
-      ctx.fillStyle = `rgba(190,150,80,${0.45 * fade})`; ctx.fillRect(0, 0, viewW, viewH);
-      while (streaks.length < 90) streaks.push({ x: rand(0, viewW), y: rand(0, viewH), l: rand(20, 70), v: rand(500, 900) });
-      ctx.strokeStyle = `rgba(230,200,140,${0.6 * fade})`; ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      for (const s of streaks) { ctx.moveTo(s.x, s.y); ctx.lineTo(s.x - s.l, s.y + s.l * 0.12); }
-      ctx.stroke();
-    } else streaks.length = 0;
-
-    drawHUD();
-  }
-
-  function shade(hex, light) {
-    const n = parseInt(hex.slice(1), 16);
-    const f = 0.45 + 0.55 * light;
-    return `rgb(${Math.round((n >> 16) * f)},${Math.round(((n >> 8) & 255) * f)},${Math.round((n & 255) * f * (1 + (1 - light) * 0.25))})`;
-  }
-  function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-  }
-
-  function bar(x, y, label, frac, color, text, danger) {
-    const w = 160, h = 14;
-    ctx.fillStyle = "#fff"; ctx.font = "bold 12px Trebuchet MS, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText(label, x, y - 4);
-    ctx.textAlign = "right"; ctx.fillText(text, x + w, y - 4);
-    ctx.fillStyle = "rgba(0,0,0,0.5)"; roundRect(x, y, w, h, 5); ctx.fill();
-    const flash = danger && Math.sin(performance.now() / 120) > 0;
-    ctx.fillStyle = flash ? "#ff3b30" : color;
-    roundRect(x, y, Math.max(4, w * clamp(frac, 0, 1)), h, 5); ctx.fill();
-    if (danger) { ctx.strokeStyle = "#ff3b30"; ctx.lineWidth = 2; roundRect(x, y, w, h, 5); ctx.stroke(); }
-  }
-
-  function drawHUD() {
-    ctx.fillStyle = "rgba(0,0,0,0.35)"; roundRect(8, 8, 360, 76, 10); ctx.fill();
-    const hf = (heat - 28) / (46 - 28);
-    bar(20, 30, "Body heat", hf, heat > 39 ? "#ff8a3d" : heat < 35 ? "#6ab7ff" : "#7bd36b", heat.toFixed(1) + "°C", heat > 41 || heat < 33);
-    // safe zone markers on heat bar
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.fillRect(20 + 160 * (33 - 28) / 18, 30, 2, 14);
-    ctx.fillRect(20 + 160 * (41 - 28) / 18, 30, 2, 14);
-    bar(196, 30, "Water", water / 100, "#4fb3ff", Math.round(water) + "%", water < 12);
-    bar(20, 64, "Fat (hump)", fat / 100, "#e0a050", Math.round(fat) + "%", fat < 5);
-    bar(196, 64, "Health", health / 100, "#ff5a6e", Math.round(health) + "%", health < 30);
-
-    // day, temp, phase in the top-right corner
-    const air = player.inBurrow ? 25 : airTemp(time);
-    ctx.fillStyle = "rgba(0,0,0,0.35)"; roundRect(viewW - 150, 8, 142, 76, 10); ctx.fill();
-    ctx.textAlign = "right"; ctx.fillStyle = "#fff";
-    ctx.font = "bold 24px Trebuchet MS, sans-serif"; ctx.fillText("Day " + day, viewW - 18, 36);
-    ctx.font = "bold 15px Trebuchet MS, sans-serif";
-    ctx.fillStyle = air > 35 ? "#ffb070" : air < 12 ? "#9fd0ff" : "#fff";
-    ctx.fillText((player.inBurrow ? "Burrow " : "Air ") + Math.round(air) + "°C", viewW - 18, 58);
-    ctx.fillStyle = "#f3e2c0"; ctx.font = "13px Trebuchet MS, sans-serif";
-    ctx.fillText(phaseName(time) + (storm.active ? " · Sandstorm" : ""), viewW - 18, 76);
-
-    // tip popup
-    if (tipTimer > 0 && tipQueue.length) {
-      const msg = tipQueue[0];
-      const a = Math.min(1, tipTimer * 2, (4.5 - tipTimer) * 4);
-      ctx.globalAlpha = a;
-      ctx.font = "bold 16px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
-      const lines = wrap(msg, Math.min(520, viewW - 60));
-      const bw = Math.min(560, viewW - 30), bh = 22 * lines.length + 34;
-      const bx = (viewW - bw) / 2, by = 100;
-      ctx.fillStyle = "rgba(255,245,215,0.95)"; roundRect(bx, by, bw, bh, 12); ctx.fill();
-      ctx.strokeStyle = "#c99a5a"; ctx.lineWidth = 3; ctx.stroke();
-      ctx.fillStyle = "#8a4f17"; ctx.font = "bold 12px Trebuchet MS, sans-serif";
-      ctx.fillText("ADAPTATION TIP", viewW / 2, by + 18);
-      ctx.fillStyle = "#4a2f12"; ctx.font = "bold 16px Trebuchet MS, sans-serif";
-      lines.forEach((l, i) => ctx.fillText(l, viewW / 2, by + 40 + i * 22));
-      ctx.globalAlpha = 1;
-    }
-  }
-  function wrap(text, maxW) {
-    const words = text.split(" "), lines = []; let line = "";
-    for (const w of words) {
-      const test = line ? line + " " + w : w;
-      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else line = test;
-    }
-    if (line) lines.push(line);
-    return lines;
-  }
-
-  // ---------- Loop ----------
-  let last = 0;
-  function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000 || 0);
-    last = now;
-    if (running) {
-      update(dt);
-      for (const s of streaks) { s.x += s.v * dt; s.y += s.v * 0.12 * dt; if (s.x - s.l > viewW) { s.x = rand(-80, 0); s.y = rand(0, viewH); } }
-    }
-    draw();
-    requestAnimationFrame(frame);
-  }
-
-  function start() {
-    reset();
-    for (const k in pressed) pressed[k] = false;
-    startScreen.classList.add("hidden");
-    overScreen.classList.add("hidden");
-    running = true;
-    canvas.focus();
-  }
-  function gameOver() {
-    running = false;
-    const survived = day - 1;
-    document.getElementById("causeText").textContent = causeOfDeath || "Exhausted";
-    document.getElementById("daysText").textContent =
-      `You survived ${survived} full day${survived === 1 ? "" : "s"} (died on Day ${day}).`;
-    overScreen.classList.remove("hidden");
-    document.getElementById("againBtn").focus();
-  }
-
-  document.getElementById("startBtn").addEventListener("click", start);
-  document.getElementById("againBtn").addEventListener("click", start);
-
-  reset();
-  requestAnimationFrame(frame);
-})();
-</script>
+<script src="js/config.js"></script>
+<script src="js/world.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>
