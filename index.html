@@ -242,6 +242,7 @@ body.touch-mode .keys-only, body:not(.touch-mode) .touch-only { display: none !i
         <li><b>Golden scarabs</b> are rare and fast, and restore health as well as fat.</li>
         <li><b>Hawks</b> circle, then dive at a red ring. Run out of it or duck into a burrow.</li>
         <li><b>Sandstorms</b> slow you down but can't hurt you.</li>
+        <li><b>Sand vipers:</b> stay in one burrow too long and you'll hear hissing. Leave, or a viper bites you out and takes that burrow until dawn. Keep moving between burrows.</li>
         <li><b>Weather</b> changes daily: heatwaves, cold snaps and windy days.</li>
         <li><b>Evolution:</b> every new dawn, pick one of three traits to make your sandstrider tougher.</li>
       </ul>
@@ -345,19 +346,19 @@ window.SS = window.SS || {};
       id: "easy", name: "Easy",
       blurb: "Milder heat and cold, slower thirst and plenty of food. Hawks only appear from day 3.",
       drain: 0.7, heatRate: 0.75, damage: 0.65, food: 26, dewChance: 0.75,
-      hawk: 0.5, hawkFromDay: 3, oasis: 120, startWater: 90, startFat: 85
+      hawk: 0.5, hawkFromDay: 3, burrowLimit: 50, oasis: 120, startWater: 90, startFat: 85
     },
     normal: {
       id: "normal", name: "Normal",
       blurb: "The real desert. Plan your days around the sun and watch the sky for hawks.",
       drain: 1, heatRate: 1, damage: 1, food: 18, dewChance: 0.55,
-      hawk: 1, hawkFromDay: 2, oasis: 80, startWater: 80, startFat: 70
+      hawk: 1, hawkFromDay: 2, burrowLimit: 38, oasis: 80, startWater: 80, startFat: 70
     },
     hard: {
       id: "hard", name: "Hard",
       blurb: "Brutal extremes, scarce food, a shallow oasis and hungry hawks from the first day.",
       drain: 1.3, heatRate: 1.25, damage: 1.35, food: 12, dewChance: 0.4,
-      hawk: 1.6, hawkFromDay: 1, oasis: 45, startWater: 70, startFat: 60
+      hawk: 1.6, hawkFromDay: 1, burrowLimit: 28, oasis: 45, startWater: 70, startFat: 60
     }
   };
 
@@ -399,6 +400,8 @@ window.SS = window.SS || {};
   SS.createWorld = function (diff) {
     const world = {
       burrows: BURROWS.slice(),
+      // use = seconds spent inside (slowly fades while away); viper = taken until dawn
+      dens: BURROWS.map(() => ({ use: 0, viper: false, warned: false })),
       rocks: [250, 780, 1180, 1690, 2080, 2360, 2900, 3250, 3800]
         .map(x => ({ x, w: SS.rand(34, 50), h: SS.rand(20, 30), dew: false })),
       trees: [980, 2210, 3080].map(x => ({ x })),
@@ -529,6 +532,19 @@ window.SS = window.SS || {};
     evolve: () => [392, 523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, { type: "triangle", vol: 0.06, delay: i * 0.07 })),
     over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, 0.45, { type: "triangle", vol: 0.08, delay: i * 0.2 }))
   };
+
+  function noiseBurst(dur, freq, vol) {
+    if (!A.enabled || !A.ctx) return;
+    const c = A.ctx, len = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, len, c.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = "highpass"; f.frequency.value = freq;
+    const g = c.createGain(); g.gain.value = vol;
+    src.connect(f).connect(g).connect(c.destination);
+    src.start();
+  }
+  A.sfx.hiss = () => noiseBurst(0.8, 3500, 0.25);
 
   // Looping filtered noise for sandstorm wind.
   A.setWind = function (on) {
@@ -855,13 +871,24 @@ window.SS = window.SS || {};
     const w = g.world;
     for (const tr of w.trees) if (onScreen(tr.x, 100)) drawTree(tr, light);
     if (onScreen(w.oasis.x, 100)) drawOasis(w.oasis, light, now);
-    for (const b of w.burrows) {
-      if (!onScreen(b, 60)) continue;
+    w.burrows.forEach((b, i) => {
+      if (!onScreen(b, 60)) return;
       const y = groundY(b);
       ellipse(b, y + 4, 44, 16, shade("#C9A06A", light));
       ellipse(b, y + 6, 34, 12, "#2a1a0c");
       ellipse(b, y + 8, 26, 8, "#140c05");
-    }
+      const den = w.dens[i];
+      if (den.viper) {
+        // a sand viper's head peeking out, tongue flicking
+        ellipse(b + 4, y + 2, 11, 6, "#8a6a3a");
+        ellipse(b + 1, y, 2, 2, "#ff3b30"); ellipse(b + 8, y, 2, 2, "#ff3b30");
+        if (Math.sin(now / 150) > 0.3) {
+          ctx.strokeStyle = "#e0405a"; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(b + 14, y + 3); ctx.lineTo(b + 20, y + 3);
+          ctx.lineTo(b + 23, y + 1); ctx.moveTo(b + 20, y + 3); ctx.lineTo(b + 23, y + 5); ctx.stroke();
+        }
+      }
+    });
     for (const cc of w.cacti) if (onScreen(cc.x, 60)) drawCactus(cc, light, now);
     for (const r of w.rocks) {
       if (!onScreen(r.x, 60)) continue;
@@ -1008,6 +1035,7 @@ window.SS = window.SS || {};
     if (g.player.sprint && g.player.moving) chips.push(["Sprinting", "#d9783a"]);
     if (g.storm.active) chips.push(["Sandstorm · nostrils sealed", "#a27b3e"]);
     if (g.hawk.state === "circling" || g.hawk.state === "diving") chips.push(["Hawk overhead!", "#c0392b"]);
+    if (g.viperIn > 0) chips.push(["Viper! Leave in " + Math.ceil(g.viperIn) + "s", "#c0392b"]);
     let chx = 8;
     for (const [label, col] of chips) {
       ctx.font = `bold 12px ${FONT}`;
@@ -1056,7 +1084,7 @@ window.SS = window.SS || {};
     const wd = g.world, mid = y + h / 2;
     for (const tr of wd.trees) ellipse(sx(tr.x), mid, 4, 3, "#6f8c3a");
     ellipse(sx(wd.oasis.x), mid + 2, 5, 3, wd.oasis.level > 1 ? "#3E9BD1" : "#8E7A55");
-    for (const b of wd.burrows) ellipse(sx(b), mid + 3, 4, 2.5, "#140c05");
+    wd.burrows.forEach((b, i) => ellipse(sx(b), mid + 3, 4, 2.5, wd.dens[i].viper ? "#ff3b30" : "#140c05"));
     for (const r of wd.rocks) if (r.dew) ellipse(sx(r.x), mid - 3, 2.5, 2.5, "#7cd0ff");
     for (const c of wd.cacti) if (c.fruit) ellipse(sx(c.x), mid - 3, 2.2, 2.2, "#E04A7A");
     if (g.traits.nose) for (const f of wd.food) ellipse(sx(f.x), mid + 5, 1.4, 1.4, f.type === "scarab" ? "#ffd84a" : "#d8b37a");
@@ -1203,7 +1231,7 @@ window.SS = window.SS || {};
       particles: [], floaters: [],
       tip: { queue: [], timer: 0, seen: {} },
       banner: { title: "Day 1", sub: "Clear skies · Survive the desert", timer: 3.5 },
-      hurt: 0, shake: 0, camX: 0, air: 25, inShade: false, sleeping: false,
+      hurt: 0, shake: 0, camX: 0, viperIn: 0, air: 25, inShade: false, sleeping: false,
       dangerPulse: false, hint: "", cause: "", beatTimer: 0, dustTimer: 0,
       rec: { dew: 0, food: 0, dist: 0, dodged: 0, hits: 0 },
       traitChoices: null
@@ -1239,6 +1267,7 @@ window.SS = window.SS || {};
     g.weather = SS.pickWeather();
     planStorms();
     SS.placeDew(g.world, g.diff);
+    g.world.dens.forEach(d => { if (d.viper) { d.viper = false; d.use = 0; } d.warned = false; });
     g.world.cacti.forEach(c => { c.fruit = Math.random() < 0.75; });
     g.world.oasis.level = g.world.oasis.max;
     if (g.world.food.length < g.diff.food) SS.spawnFood(g.world, g.diff.food - g.world.food.length);
@@ -1273,8 +1302,8 @@ window.SS = window.SS || {};
     g.traits[id] = lv(id) + 1;
     g.traitChoices = null;
     SS.audio.sfx.evolve();
+    g.mode = "play"; // before hideScreens() so the touch controls are shown again
     hideScreens();
-    g.mode = "play";
     clearInput();
     showDayBanner();
   }
@@ -1323,10 +1352,14 @@ window.SS = window.SS || {};
     p.moving = false;
     g.sleeping = false;
     const nearBurrow = w.burrows.find(b => Math.abs(b - p.x) < 45);
+    const nearDen = nearBurrow !== undefined ? w.dens[w.burrows.indexOf(nearBurrow)] : null;
 
     if (consume("arrowdown", "s")) {
       if (p.inBurrow) exitBurrow();
-      else if (nearBurrow !== undefined) {
+      else if (nearDen && nearDen.viper) {
+        floater(nearBurrow, groundY(nearBurrow) - 195, "A viper lives here!", "#ff9a9a");
+        SS.audio.sfx.hiss();
+      } else if (nearBurrow !== undefined) {
         p.inBurrow = true; p.x = nearBurrow; p.vx = 0;
         SS.audio.sfx.burrow();
         tip("burrow", "SHELTER", "Burrows stay a mild 25°C. {hold} inside to sleep and speed up time.");
@@ -1434,6 +1467,7 @@ window.SS = window.SS || {};
     }
 
     updateHawk(dt, dmgMult);
+    updateDens(dt, dmgMult);
 
     // ----- effects -----
     if (g.hurt > 0) g.hurt = Math.max(0, g.hurt - dt);
@@ -1442,6 +1476,39 @@ window.SS = window.SS || {};
     else if (g.tip.queue.length) g.tip.timer = 4.5;
 
     if (s.health <= 0) { s.health = 0; gameOver(); }
+  }
+
+  // Staying too long in one burrow attracts a sand viper, so the player has to
+  // keep moving between burrows instead of camping in one.
+  function updateDens(dt, dmgMult) {
+    const p = g.player, w = g.world, limit = g.diff.burrowLimit;
+    g.viperIn = 0;
+    w.dens.forEach((den, i) => {
+      const inside = p.inBurrow && p.x === w.burrows[i];
+      if (!inside) { den.use = Math.max(0, den.use - dt * 0.25); return; }
+      den.use += dt;
+      const left = limit - den.use;
+      if (left <= 8) {
+        g.viperIn = Math.max(0.1, left);
+        if (!den.warned) {
+          den.warned = true;
+          SS.audio.sfx.hiss();
+          tip("viper", "DANGER · SAND VIPER", "Hissing! A sand viper wants this burrow. Leave now and find another one, or get bitten.");
+        }
+      } else den.warned = false;
+      if (left <= 0) {
+        den.viper = true; den.warned = false;
+        g.viperIn = 0;
+        p.inBurrow = false;
+        p.vx = (Math.random() < 0.5 ? -1 : 1) * 380;
+        const dmg = 15 * dmgMult;
+        g.stats.health -= dmg;
+        g.cause = "Bitten by a viper";
+        g.hurt = 0.7; g.shake = 0.4;
+        floater(p.x, groundY(p.x) - 140, "Viper bite! -" + Math.round(dmg) + " health", "#ff7b7b");
+        SS.audio.sfx.hiss(); SS.audio.sfx.hurt();
+      }
+    });
   }
 
   function exitBurrow() {
@@ -1558,6 +1625,7 @@ window.SS = window.SS || {};
     const p = g.player, w = g.world;
     let hint = "";
     if (p.inBurrow) hint = "{hold} to sleep · {down} to leave";
+    else if (w.burrows.some((b, i) => Math.abs(b - p.x) < 45 && w.dens[i].viper)) hint = "A viper took this burrow until dawn";
     else if (w.burrows.some(b => Math.abs(b - p.x) < 45)) hint = "{down} to enter burrow";
     else if (w.rocks.some(r => r.dew && Math.abs(r.x - p.x) < 60)) hint = "{act} to drink dew";
     else if (w.cacti.some(c => c.fruit && Math.abs(c.x - p.x) < 45)) hint = "{act} to eat cactus fruit";
@@ -1660,6 +1728,7 @@ window.SS = window.SS || {};
       case "Froze": return "Tip: get into a burrow before dusk ends. Radiator ears cool you fast at night.";
       case "Dehydrated": return "Tip: be next to a rock at dawn for dew, and remember the oasis in the middle of the map.";
       case "Starved": return "Tip: eat beetles, seeds and cactus fruit whenever you pass them. A big hump makes water too.";
+      case "Bitten by a viper": return "Tip: don't camp in one burrow. When you hear hissing, move to another burrow.";
       case "Caught by a hawk": return say("Tip: when the red ring appears, {sprint} to run out of it, or duck into a burrow.");
       default: return "";
     }
