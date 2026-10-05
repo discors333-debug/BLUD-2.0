@@ -133,18 +133,29 @@ kbd {
 .touch button.act { width: 78px; height: 78px; background: rgba(217, 120, 58, 0.55); }
 .touch button.on { background: rgba(255, 255, 255, 0.6); }
 .pause-btn {
-  position: fixed; z-index: 3; left: 50%; transform: translateX(-50%); bottom: 12px;
+  position: fixed; z-index: 3; top: 104px; right: 8px;
   padding: 6px 14px; font-size: 14px; background: rgba(0,0,0,0.35); color: #fff; box-shadow: none;
 }
-.pause-btn:active { transform: translateX(-50%) translateY(1px); }
+.pause-btn:active { transform: translateY(1px); }
 
 @media (max-width: 560px) {
   .diff-cards, .trait-cards { grid-template-columns: 1fr; }
   .card { padding: 16px; }
   .tab { padding: 6px 10px; font-size: 14px; }
 }
-@media (pointer: coarse) {
-  .pause-btn { bottom: auto; top: 160px; }
+@media (pointer: coarse) and (max-width: 500px) {
+  .touch { padding-left: 10px; padding-right: 10px; }
+  .touch .pad { gap: 8px; }
+  .touch button { width: 58px; height: 58px; font-size: 22px; }
+  .touch button.small { width: 50px; height: 50px; font-size: 11px; }
+  .touch button.act { width: 66px; height: 66px; }
+}
+@media (pointer: coarse) and (max-height: 500px) {
+  .touch { padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .touch .pad { gap: 10px; }
+  .touch button { width: 64px; height: 64px; font-size: 22px; }
+  .touch button.small { width: 56px; height: 56px; font-size: 12px; }
+  .touch button.act { width: 72px; height: 72px; }
 }
 </style>
 </head>
@@ -154,12 +165,12 @@ kbd {
 <!-- On-screen controls (touch devices only) -->
 <div id="touch" class="touch hidden">
   <div class="pad">
-    <button data-key="arrowleft" aria-label="Walk left">◀</button>
-    <button data-key="arrowright" aria-label="Walk right">▶</button>
+    <button data-key="arrowleft" aria-label="Walk left">◀&#xFE0E;</button>
+    <button data-key="arrowright" aria-label="Walk right">▶&#xFE0E;</button>
   </div>
   <div class="pad">
     <button data-key="shift" class="small" aria-label="Sprint">Sprint</button>
-    <button data-key="s" aria-label="Burrow">▼</button>
+    <button data-key="s" aria-label="Burrow">▼&#xFE0E;</button>
     <button data-key=" " class="act" aria-label="Action">●</button>
   </div>
 </div>
@@ -756,6 +767,9 @@ window.SS = window.SS || {};
     const grad = ctx.createLinearGradient(0, 0, 0, 480);
     grad.addColorStop(0, top); grad.addColorStop(1, bottom);
     ctx.fillStyle = grad; ctx.fillRect(-20, -20, vw + 40, vh + 40);
+    const offY = view.offY || 0;
+    ctx.save();
+    ctx.translate(0, offY);
 
     // stars
     if (light < 1) {
@@ -883,6 +897,7 @@ window.SS = window.SS || {};
       text(g.hint, p.x, hy + 17, 14, "#fff", "center");
     }
     ctx.restore();
+    ctx.restore(); // offY
 
     // night tint
     if (light < 1) { ctx.fillStyle = `rgba(10,12,40,${(1 - light) * 0.35})`; ctx.fillRect(-20, -20, vw + 40, vh + 40); }
@@ -996,8 +1011,9 @@ window.SS = window.SS || {};
       const b = g.banner;
       const a = Math.min(1, b.timer, (3.5 - b.timer) * 3);
       ctx.globalAlpha = clamp(a, 0, 1);
-      text(b.title, vw / 2, view.h * 0.42, 52, "#fff8e0", "center");
-      text(b.sub, vw / 2, view.h * 0.42 + 34, 18, "#ffe6b0", "center");
+      const by = (view.offY || 0) + 215;
+      text(b.title, vw / 2, by, 52, "#fff8e0", "center");
+      text(b.sub, vw / 2, by + 34, 18, "#ffe6b0", "center");
       ctx.globalAlpha = 1;
     }
   }
@@ -1035,14 +1051,25 @@ window.SS = window.SS || {};
   const ctx = canvas.getContext("2d");
 
   // ---------- view / resize ----------
-  const view = { w: SS.BASE_W, h: SS.BASE_H, scale: 1, dpr: 1 };
+  const view = { w: SS.BASE_W, h: SS.BASE_H, scale: 1, dpr: 1, offY: 0 };
+  const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  // On touchscreens, keep a strip at the bottom free for the on-screen buttons
+  // and fit the scene down to just below the animal's feet.
+  const TOUCH_PAD = 92, TOUCH_SCENE_H = 515;
   function resize() {
     view.dpr = window.devicePixelRatio || 1;
     const W = window.innerWidth, H = window.innerHeight;
     canvas.width = Math.round(W * view.dpr);
     canvas.height = Math.round(H * view.dpr);
-    view.scale = Math.min(H / SS.BASE_H, W / SS.BASE_W);
+    view.scale = isTouch
+      ? Math.min((H - TOUCH_PAD) / TOUCH_SCENE_H, W / SS.BASE_W)
+      : Math.min(H / SS.BASE_H, W / SS.BASE_W);
     view.w = W / view.scale; view.h = H / view.scale;
+    // tall portrait screens: slide the scene down so the ground sits just above the buttons
+    view.offY = isTouch ? Math.max(0, (H - TOUCH_PAD) / view.scale - TOUCH_SCENE_H) : 0;
+    // tuck the pause button under the Day panel (top-right of the HUD)
+    const pb = document.getElementById("pauseBtn");
+    if (pb) { pb.style.top = Math.round(104 * view.scale) + "px"; pb.style.right = Math.round(8 * view.scale) + "px"; }
   }
   window.addEventListener("resize", resize);
   resize();
@@ -1096,7 +1123,6 @@ window.SS = window.SS || {};
 
   // ---------- touch controls ----------
   const touch = $("touch");
-  const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
   touch.querySelectorAll("button[data-key]").forEach(btn => {
     const k = btn.dataset.key;
     const down = ev => { ev.preventDefault(); if (!keys[k]) pressed[k] = true; keys[k] = true; btn.classList.add("on"); SS.audio.init(); };
@@ -1144,7 +1170,7 @@ window.SS = window.SS || {};
   function tip(id, title, msg) {
     if (!settings.tips || g.tip.seen[id]) return;
     g.tip.seen[id] = true;
-    g.tip.queue.push({ title, text: msg });
+    g.tip.queue.push({ title, text: isTouch ? msg.replace(/Space/g, "●") : msg });
   }
   function floater(x, y, str, color) { g.floaters.push({ x, y, text: str, color: color || "#fff", life: 1.4 }); }
   function burst(x, y, color, n, spread) {
@@ -1476,13 +1502,14 @@ window.SS = window.SS || {};
 
   function updateHint() {
     const p = g.player, w = g.world;
+    const act = isTouch ? "●" : "Space", down = isTouch ? "▼" : "↓ / S";
     let hint = "";
-    if (p.inBurrow) hint = "Hold Space to sleep · ↓/S to leave";
-    else if (w.burrows.some(b => Math.abs(b - p.x) < 45)) hint = "↓ / S to enter burrow";
-    else if (w.rocks.some(r => r.dew && Math.abs(r.x - p.x) < 60)) hint = "Space: drink dew";
-    else if (w.cacti.some(c => c.fruit && Math.abs(c.x - p.x) < 45)) hint = "Space: eat cactus fruit";
-    else if (w.food.some(f => Math.abs(f.x - p.x) < 50)) hint = "Space: eat";
-    else if (Math.abs(w.oasis.x - p.x) < 80 && w.oasis.level > 0) hint = "Hold Space: drink";
+    if (p.inBurrow) hint = `Hold ${act} to sleep · ${down} to leave`;
+    else if (w.burrows.some(b => Math.abs(b - p.x) < 45)) hint = `${down} to enter burrow`;
+    else if (w.rocks.some(r => r.dew && Math.abs(r.x - p.x) < 60)) hint = `${act}: drink dew`;
+    else if (w.cacti.some(c => c.fruit && Math.abs(c.x - p.x) < 45)) hint = `${act}: eat cactus fruit`;
+    else if (w.food.some(f => Math.abs(f.x - p.x) < 50)) hint = `${act}: eat`;
+    else if (Math.abs(w.oasis.x - p.x) < 80 && w.oasis.level > 0) hint = `Hold ${act}: drink`;
     g.hint = hint;
   }
 
